@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO & Metadata -->
+    <title>LexiCanvas | Professional AI Art Generator</title>
+    <meta name="description" content="LexiCanvas is a professional AI text-to-image generator. Turn text prompts into high-quality digital art instantly using the latest diffusion models.">
+    <meta name="keywords" content="AI image generator, LexiCanvas, text to image, AI art, cinematic AI, Pollinations API">
+    <meta name="author" content="Ethan Anyam">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="LexiCanvas | AI Art Generator">
+    <meta property="og:description" content="Create cinematic, high-resolution AI art from text prompts.">
+    <meta property="og:type" content="website">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
+
+    <!-- Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'lexi-gold': '#FFD700',
+                        'lexi-blue': '#00f3ff',
+                        'lexi-dark': '#050505',
+                        'lexi-panel': 'rgba(20, 20, 20, 0.6)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Cinzel', 'serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* --- PRO STYLING --- */
+        body {
+            background-color: #050505;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 243, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 215, 0, 0.03) 0%, transparent 40%);
+            color: #ffffff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: var(--lexi-panel);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Animations */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .scan-effect::after {
+            content: "";
+            position: absolute; top:0; left:0; right:0; bottom:0;
+            background: linear-gradient(to bottom, transparent, rgba(0, 243, 255, 0.05), transparent);
+            animation: scanline 6s linear infinite;
+            pointer-events: none;
+        }
+
+        /* Gallery Grid */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        
+        /* Style Buttons */
+        .style-btn {
+            transition: all 0.2s ease;
+        }
+        .style-btn.active {
+            background-color: rgba(255, 215, 0, 0.1);
+            border-color: #FFD700;
+            color: #FFD700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+        }
+        .style-btn.free-style.active {
+            background-color: rgba(0, 243, 255, 0.1);
+            border-color: #00f3ff;
+            color: #00f3ff;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
+        }
+
+        /* Golden Bar Glow */
+        .gold-glow {
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Loading / Intro Overlay -->
+    <div id="intro-overlay" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center transition-opacity duration-1000">
+        <div class="text-center space-y-4">
+            <div class="inline-block relative">
+                <div class="absolute inset-0 bg-lexi-blue blur-xl opacity-20 animate-pulse"></div>
+                <h1 class="text-5xl md:text-7xl font-serif font-bold text-white relative z-10 tracking-widest">
+                    LEXI<span class="text-lexi-gold">CANVAS</span>
+                </h1>
+            </div>
+            <p class="text-gray-500 font-mono text-xs tracking-[0.3em]">AI ARCHITECTURE INITIALIZING...</p>
+            <div class="w-48 h-1 bg-gray-900 mx-auto rounded overflow-hidden mt-8">
+                <div id="intro-bar" class="h-full bg-lexi-gold w-0 transition-all duration-[2000ms] ease-out"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-40 border-b border-white/5 bg-black/50 backdrop-blur-md">
+        <div class="container mx-auto px-6 h-20 flex justify-between items-center">
+            <!-- Brand -->
+            <div class="flex items-center gap-3 group cursor-default">
+                <div class="w-8 h-8 border border-lexi-gold rotate-45 flex items-center justify-center transition-transform group-hover:rotate-90 duration-500">
+                    <div class="w-4 h-4 bg-lexi-gold/20 rotate-45"></div>
+                </div>
+                <span class="text-2xl font-serif font-bold tracking-wider">LEXI<span class="text-lexi-gold">CANVAS</span></span>
+            </div>
+
+            <!-- Nav Actions -->
+            <div class="flex items-center gap-4">
+                <button onclick="App.toggleGallery()" class="flex items-center gap-2 px-4 py-2 text-sm font-mono border border-gray-700 rounded hover:border-lexi-blue hover:text-lexi-blue transition-all duration-300">
+                    <i class="fas fa-th-large"></i> <span class="hidden sm:inline">GALLERY</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Message Area (Welcome/Show & Tell) -->
+    <div id="welcome-flash" class="fixed z-30 top-[100px] left-1/2 -translate-x-1/2 p-4 max-w-md w-[calc(100%-2rem)] md:w-auto bg-lexi-blue/10 border border-lexi-blue rounded-xl text-center text-sm transition-all duration-700 opacity-0 transform -translate-y-4 shadow-xl">
+        <i class="fas fa-history text-lexi-blue mr-2"></i> Your past creations are saved! Check the <button onclick="App.toggleGallery()" class="font-bold text-white underline hover:text-lexi-gold transition-colors">GALLERY <i class="fas fa-th-large ml-1"></i></button> in the top right corner.
+    </div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 pt-32 pb-12 flex flex-col lg:flex-row gap-8 min-h-screen">
+        
+        <!-- LEFT: Controls -->
+        <section class="w-full lg:w-1/3 space-y-6 animate-fade-in-up">
+            <div class="glass-panel p-8 rounded-2xl relative overflow-hidden group">
+                <!-- Decorative accent -->
+                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-lexi-gold to-transparent opacity-50"></div>
+                
+                <h2 class="text-lg font-mono text-gray-400 mb-6 flex items-center gap-2">
+                    <i class="fas fa-sliders-h text-lexi-gold"></i> CONFIGURATION
+                </h2>
+
+                <!-- Daily Limit Counter (NEW) -->
+                <div class="bg-black/40 p-3 rounded-lg border border-gray-800 mb-6 text-center text-xs font-mono">
+                    <i class="fas fa-redo-alt mr-2 text-lexi-blue"></i> DAILY GENERATION LIMIT
+                    <p id="daily-counter" class="mt-1 text-gray-400">Loading...</p>
+                </div>
+
+                <!-- Prompt Input -->
+                <div class="space-y-2 mb-6">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-gray-500 tracking-wider">PROMPT</label>
+                        <button onclick="App.clearPrompt()" class="text-xs text-red-400 hover:text-red-300 transition-colors opacity-70 hover:opacity-100">
+                            <i class="fas fa-trash-alt mr-1"></i> Clear
+                        </button>
+                    </div>
+                    <textarea id="prompt-input" rows="4" 
+                        class="w-full bg-black/40 border border-gray-800 rounded-lg p-4 text-sm focus:border-lexi-blue focus:ring-1 focus:ring-lexi-blue outline-none transition-all resize-none text-gray-200 placeholder-gray-700"
+                        placeholder="Describe your imagination... (e.g. A cyberpunk samurai in neon rain, 8k resolution)"></textarea>
+                </div>
+
+                <!-- Style Selector -->
+                <div class="space-y-2 mb-8">
+                    <div class="flex justify-between items-end">
+                        <label class="text-xs font-bold text-gray-500 tracking-wider">STYLE PRESET</label>
+                        <span id="current-style-label" class="text-xs text-lexi-gold font-mono">CINEMATIC</span>
+                    </div>
+                    
+                    <!-- Styles Grid -->
+                    <div class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto custom-scroll p-1" id="style-grid">
+                        <!-- JS fills this -->
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col gap-3">
+                    <button onclick="App.generate()" class="group relative w-full py-4 bg-white text-black font-bold uppercase tracking-widest text-sm rounded hover:bg-lexi-gold transition-colors duration-300 overflow-hidden">
+                        <span class="relative z-10 flex items-center justify-center gap-2">
+                            <i class="fas fa-bolt"></i> Generate Artwork
+                        </span>
+                        <div class="absolute inset-0 bg-lexi-gold transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300 z-0"></div>
+                    </button>
+                    
+                    <button onclick="App.randomize()" class="w-full py-3 text-xs font-mono text-gray-500 border border-gray-800 rounded hover:border-gray-600 hover:text-gray-300 transition-colors flex justify-center items-center gap-2">
+                        <i class="fas fa-random"></i> SURPRISE ME
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT: Canvas / Output -->
+        <section class="w-full lg:w-2/3 relative">
+            <div class="glass-panel rounded-2xl p-1 h-[500px] lg:h-[700px] relative flex flex-col">
+                
+                <!-- Canvas Header -->
+                <div class="flex justify-between items-center p-4 border-b border-white/5">
+                    <div class="flex gap-2">
+                        <div class="w-2 h-2 rounded-full bg-red-500/50"></div>
+                        <div class="w-2 h-2 rounded-full bg-yellow-500/50"></div>
+                        <div class="w-2 h-2 rounded-full bg-green-500/50"></div>
+                    </div>
+                    <div id="status-text" class="text-xs font-mono text-gray-500">READY TO RENDER</div>
+                </div>
+
+                <!-- Image Area -->
+                <div class="flex-grow bg-black/40 relative overflow-hidden flex items-center justify-center group scan-effect">
+                    
+                    <!-- Empty State -->
+                    <div id="empty-state" class="text-center opacity-100 transition-opacity duration-500">
+                        <i class="fas fa-cube text-6xl text-gray-800 mb-4"></i>
+                        <p class="text-gray-600 font-mono text-sm">AWAITING INPUT STREAM</p>
+                    </div>
+
+                    <!-- Loader & Progress Bar (Updated) -->
+                    <div id="loader" class="hidden absolute inset-0 bg-black/90 z-20 flex-col items-center justify-center backdrop-blur-md px-8">
+                        <!-- Golden Ring -->
+                        <div class="w-16 h-16 border-4 border-gray-800 border-t-lexi-gold rounded-full animate-spin mb-8 shadow-[0_0_15px_rgba(255,215,0,0.2)]"></div>
+                        
+                        <!-- Progress Bar Container -->
+                        <div class="w-full max-w-md h-2 bg-gray-800 rounded-full overflow-hidden relative shadow-inner">
+                            <div id="progress-bar" class="h-full bg-gradient-to-r from-yellow-600 to-lexi-gold gold-glow transition-all duration-300 ease-out" style="width: 0%"></div>
+                        </div>
+                        
+                        <!-- Dynamic Status Text -->
+                        <p id="loading-message" class="text-lexi-gold font-mono text-xs mt-4 tracking-widest uppercase animate-pulse">INITIALIZING...</p>
+                    </div>
+
+                    <!-- The Image -->
+                    <img id="result-image" class="hidden w-full h-full object-contain z-10 transition-transform duration-700 hover:scale-105" alt="Generated Artwork">
+
+                    <!-- Overlay Actions (Download) -->
+                    <div id="image-overlay" class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black via-black/90 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-30 flex justify-between items-end">
+                        <div>
+                            <h3 class="text-white font-serif text-lg">Generated Artifact</h3>
+                            <p class="text-xs text-gray-400 font-mono" id="image-meta">---</p>
+                        </div>
+                        <button onclick="App.download()" class="bg-white/10 hover:bg-lexi-gold hover:text-black backdrop-blur-md text-white border border-white/20 px-6 py-2 rounded-full text-sm font-bold transition-all">
+                            <i class="fas fa-download mr-2"></i> SAVE
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- GALLERY MODAL -->
+    <div id="gallery-modal" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-lg hidden opacity-0 transition-opacity duration-300">
+        <div class="container mx-auto px-4 h-full py-10 flex flex-col">
+            <div class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+                <h2 class="text-3xl font-serif text-white">Archives <span class="text-lexi-gold text-sm font-mono ml-2">// HISTORY</span></h2>
+                <button onclick="App.toggleGallery()" class="text-gray-400 hover:text-white text-2xl"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div id="gallery-content" class="gallery-grid overflow-y-auto custom-scroll pb-10 flex-grow">
+                <!-- Gallery items injected here -->
+            </div>
+            
+            <div id="gallery-empty" class="hidden flex-col items-center justify-center h-64 text-gray-600">
+                <i class="fas fa-images text-4xl mb-3"></i>
+                <p>No archives found yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-8 text-center text-gray-600 font-mono text-xs">
+        <p>LEXICANVAS AI SYSTEM &copy; 2025</p>
+        <p class="mt-2 opacity-50">Created by Ethan Anyam</p>
+    </footer>
+
+    <!-- LOGIC -->
+    <script>
+        // --- CONSTANTS ---
+        const MAX_GENERATIONS = 15;
+        const COUNT_KEY = 'lexiCanvas_daily_count';
+        const RESET_KEY = 'lexiCanvas_last_reset';
+        const MILLIS_IN_DAY = 24 * 60 * 60 * 1000;
+
+        // --- The App Namespace (Professional Structure) ---
+        const App = {
+            state: {
+                selectedStyle: "Cinematic",
+                isGenerating: false,
+                gallery: JSON.parse(localStorage.getItem('lexiCanvas_gallery')) || [],
+                progressInterval: null,
+                dailyCount: 0, 
+                resetTimestamp: 0
+            },
+
+            elements: {
+                promptInput: document.getElementById('prompt-input'),
+                styleGrid: document.getElementById('style-grid'),
+                resultImg: document.getElementById('result-image'),
+                loader: document.getElementById('loader'),
+                progressBar: document.getElementById('progress-bar'),
+                loadingMessage: document.getElementById('loading-message'),
+                emptyState: document.getElementById('empty-state'),
+                statusText: document.getElementById('status-text'),
+                overlay: document.getElementById('image-overlay'),
+                galleryModal: document.getElementById('gallery-modal'),
+                galleryContent: document.getElementById('gallery-content'),
+                galleryEmpty: document.getElementById('gallery-empty'),
+                currentStyleLabel: document.getElementById('current-style-label'),
+                welcomeFlash: document.getElementById('welcome-flash'),
+                dailyCounter: document.getElementById('daily-counter') // New element
+            },
+
+            styles: [
+                "Cinematic", "Cyberpunk", "Anime", "Oil Painting", 
+                "Hyperrealistic", "Vaporwave", "Dark Fantasy", "Studio Ghibli",
+                "Polaroid", "Unreal Engine 5", "Pixel Art", "3D Render",
+                // 10 NEW STYLES
+                "Watercolor", "Retro Sci-Fi", "Graffiti", "Stained Glass",
+                "Ukiyo-e", "Renaissance", "Abstract", "Paper Cutout",
+                "Isometric", "Charcoal Sketch"
+            ],
+
+            init() {
+                this.renderStyles();
+                this.showWelcomeFlash(); 
+                this.updateDailyLimit(); // Initialize and check daily limit
+                
+                // Intro Animation
+                setTimeout(() => {
+                    document.getElementById('intro-bar').style.width = '100%';
+                    setTimeout(() => {
+                        document.getElementById('intro-overlay').classList.add('opacity-0');
+                        setTimeout(() => document.getElementById('intro-overlay').remove(), 1000);
+                    }, 2200);
+                }, 100);
+
+                // Check Gallery
+                this.renderGallery();
+            },
+
+            // --- DAILY LIMIT LOGIC ---
+            updateDailyLimit() {
+                const now = Date.now();
+                const storedCount = parseInt(localStorage.getItem(COUNT_KEY) || MAX_GENERATIONS.toString(), 10);
+                const storedReset = parseInt(localStorage.getItem(RESET_KEY) || '0', 10);
+
+                if (now - storedReset > MILLIS_IN_DAY) {
+                    // Reset required: set count to max and update timestamp
+                    this.state.dailyCount = MAX_GENERATIONS;
+                    this.state.resetTimestamp = now;
+                    localStorage.setItem(COUNT_KEY, MAX_GENERATIONS.toString());
+                    localStorage.setItem(RESET_KEY, now.toString());
+                } else {
+                    // Continue with stored count
+                    this.state.dailyCount = storedCount;
+                    this.state.resetTimestamp = storedReset;
+                }
+
+                this.renderDailyCounter();
+            },
+
+            incrementCount() {
+                this.state.dailyCount = Math.max(0, this.state.dailyCount - 1); // Decrement count
+                localStorage.setItem(COUNT_KEY, this.state.dailyCount.toString());
+                this.renderDailyCounter();
+            },
+
+            renderDailyCounter() {
+                const counterElement = this.elements.dailyCounter;
+                if (counterElement) {
+                    const remaining = this.state.dailyCount;
+                    // Determine color based on remaining count
+                    let colorClass = 'text-green-400';
+                    if (remaining <= 5 && remaining > 0) {
+                        colorClass = 'text-yellow-400';
+                    } else if (remaining === 0) {
+                        colorClass = 'text-red-500';
+                    }
+
+                    const html = `REMAINING: <span class="font-bold tracking-widest ${colorClass}">${remaining}</span> / ${MAX_GENERATIONS}`;
+                    counterElement.innerHTML = html;
+                }
+            },
+            // --- END DAILY LIMIT LOGIC ---
+
+            showWelcomeFlash() {
+                const flash = this.elements.welcomeFlash;
+                if (flash) {
+                    // Show the message immediately after init
+                    setTimeout(() => {
+                        flash.classList.remove('opacity-0', '-translate-y-4');
+                    }, 100);
+
+                    // Hide the message after 6 seconds
+                    setTimeout(() => {
+                        flash.classList.add('opacity-0', '-translate-y-4');
+                        // Remove it from the flow after transition
+                        setTimeout(() => {
+                            flash.style.display = 'none';
+                        }, 700);
+                    }, 6000);
+                }
+            },
+
+            clearPrompt() {
+                this.elements.promptInput.value = '';
+                this.elements.promptInput.focus();
+            },
+
+            renderStyles() {
+                let html = '';
+                
+                // 1. Add the "Free Style" Button First
+                const isFree = this.state.selectedStyle === "Free Style";
+                html += `
+                    <button onclick="App.selectStyle('Free Style', this)" 
+                        class="style-btn free-style text-xs p-3 text-left border rounded transition-colors col-span-2 flex items-center justify-between group
+                        ${isFree ? 'active' : 'bg-black/30 text-gray-400 border-lexi-blue/30 hover:border-lexi-blue hover:text-lexi-blue'}">
+                        <span class="font-bold tracking-wider">✨ FREE STYLE</span>
+                        <span class="text-[10px] opacity-60">Use your own style words</span>
+                    </button>
+                `;
+
+                // 2. Add the regular styles
+                html += this.styles.map(s => {
+                    const isActive = this.state.selectedStyle === s;
+                    return `
+                    <button onclick="App.selectStyle('${s}', this)" 
+                        class="style-btn text-xs p-3 text-left border border-gray-800 rounded hover:border-lexi-gold hover:text-lexi-gold transition-colors 
+                        ${isActive ? 'active' : 'bg-black/30 text-gray-400'}">
+                        ${s}
+                    </button>`;
+                }).join('');
+
+                this.elements.styleGrid.innerHTML = html;
+            },
+
+            selectStyle(style, btn) {
+                this.state.selectedStyle = style;
+                this.elements.currentStyleLabel.innerText = style.toUpperCase();
+                this.renderStyles(); // Re-render to update active classes
+            },
+
+            async generate() {
+                if (this.state.isGenerating) return;
+
+                // --- DAILY LIMIT CHECK ---
+                if (this.state.dailyCount <= 0) {
+                    this.elements.statusText.innerHTML = '<span class="text-red-500">LIMIT REACHED: Resets in 24 hours.</span>';
+                    return;
+                }
+                // --- END CHECK ---
+
+                const prompt = this.elements.promptInput.value.trim();
+                if (!prompt) {
+                    this.elements.promptInput.focus();
+                    this.elements.promptInput.classList.add('ring-1', 'ring-red-500');
+                    setTimeout(() => this.elements.promptInput.classList.remove('ring-1', 'ring-red-500'), 1000);
+                    return;
+                }
+
+                // UI Reset
+                this.state.isGenerating = true;
+                this.elements.loader.classList.remove('hidden');
+                this.elements.loader.classList.add('flex');
+                this.elements.statusText.innerHTML = '<span class="text-lexi-gold animate-pulse">GENERATING...</span>';
+                this.elements.resultImg.classList.add('hidden');
+                this.elements.overlay.classList.add('translate-y-full'); 
+                
+                // Start Progress Animation
+                this.simulateProgress();
+
+                // Params
+                const seed = Math.floor(Math.random() * 1000000);
+                
+                // PROMPT LOGIC
+                let finalPrompt = "";
+                if (this.state.selectedStyle === "Free Style") {
+                    finalPrompt = encodeURIComponent(`${prompt}, high quality, detailed, 8k, masterpiece`);
+                } else {
+                    finalPrompt = encodeURIComponent(`${prompt}, ${this.state.selectedStyle} style, detailed, 8k, masterpiece`);
+                }
+
+                // Pollinations API URL
+                const url = `https://image.pollinations.ai/prompt/${finalPrompt}?width=1280&height=720&seed=${seed}&nologo=true&model=flux`;
+
+                // Load Image
+                const img = new Image();
+                img.onload = () => {
+                    this.onImageReady(url, seed, prompt);
+                };
+                img.onerror = () => {
+                    this.state.isGenerating = false;
+                    clearInterval(this.state.progressInterval);
+                    this.elements.loader.classList.add('hidden');
+                    this.elements.statusText.innerHTML = '<span class="text-red-500">CONNECTION FAILED</span>';
+                };
+                img.src = url;
+            },
+
+            simulateProgress() {
+                let progress = 0;
+                this.elements.progressBar.style.width = '0%';
+                
+                // The status messages requested
+                const messages = [
+                    "Analyzing prompt...",
+                    "Understanding prompt...",
+                    "Generating artifact...",
+                    "Rendering artifact...",
+                    "Surprising you with another aspect..."
+                ];
+
+                this.state.progressInterval = setInterval(() => {
+                    // Random increment to look natural
+                    progress += Math.random() * 2; 
+                    
+                    // Cap at 95% until image actually loads
+                    if (progress > 95) progress = 95; 
+
+                    this.elements.progressBar.style.width = `${progress}%`;
+
+                    // Update Text based on percentage
+                    let msgIndex = Math.floor((progress / 100) * messages.length);
+                    if (msgIndex >= messages.length) msgIndex = messages.length - 1;
+                    
+                    this.elements.loadingMessage.innerText = messages[msgIndex];
+
+                }, 100);
+            },
+
+            onImageReady(url, seed, originalPrompt) {
+                // Image is ready, but let's quickly finish the bar
+                clearInterval(this.state.progressInterval);
+                this.elements.progressBar.style.width = '100%';
+                this.elements.loadingMessage.innerText = "COMPLETE";
+
+                setTimeout(() => {
+                    // Hide loader and show image
+                    this.elements.loader.classList.add('hidden');
+                    this.elements.loader.classList.remove('flex');
+                    this.elements.emptyState.classList.add('hidden');
+                    
+                    this.elements.resultImg.src = url;
+                    this.elements.resultImg.classList.remove('hidden');
+                    this.elements.statusText.innerHTML = '<span class="text-green-500">RENDER COMPLETE</span>';
+                    document.getElementById('image-meta').innerText = `SEED: ${seed} // STYLE: ${this.state.selectedStyle.toUpperCase()}`;
+                    
+                    this.state.isGenerating = false;
+
+                    // --- DAILY LIMIT DECREMENT ---
+                    this.incrementCount();
+                    
+                    // Save to Gallery History
+                    this.addToHistory({
+                        url: url,
+                        prompt: originalPrompt,
+                        style: this.state.selectedStyle,
+                        date: new Date().toLocaleDateString()
+                    });
+                }, 500); // Short delay to let user see 100% bar
+            },
+
+            randomize() {
+                const prompts = [
+                    "A neon-lit cyberpunk city in heavy rain, reflections on wet pavement",
+                    "A majestic dragon made of crystals resting on a mountain peak",
+                    "Portrait of an astronaut in a floral garden on Mars",
+                    "A futuristic flying car over Tokyo at sunset",
+                    "Ancient library with floating glowing books, magical atmosphere",
+                    "A cute robot painting a canvas on the moon, earth in background"
+                ];
+                this.elements.promptInput.value = prompts[Math.floor(Math.random() * prompts.length)];
+            },
+
+            async download() {
+                const img = this.elements.resultImg;
+                if (!img.src) return;
+
+                try {
+                    const response = await fetch(img.src);
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `LexiCanvas_${Date.now()}.jpg`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                } catch (e) {
+                    // Fallback to open image in new tab for download
+                    window.open(img.src, '_blank');
+                }
+            },
+
+            // --- GALLERY LOGIC ---
+
+            addToHistory(item) {
+                this.state.gallery.unshift(item);
+                if(this.state.gallery.length > 20) this.state.gallery.pop();
+                localStorage.setItem('lexiCanvas_gallery', JSON.stringify(this.state.gallery));
+                this.renderGallery();
+            },
+
+            renderGallery() {
+                const list = this.state.gallery;
+                const container = this.elements.galleryContent;
+                const empty = this.elements.galleryEmpty;
+
+                if (list.length === 0) {
+                    container.innerHTML = '';
+                    empty.classList.remove('hidden');
+                    empty.classList.add('flex');
+                    return;
+                }
+
+                empty.classList.add('hidden');
+                empty.classList.remove('flex');
+
+                container.innerHTML = list.map((item, index) => `
+                    <div class="relative group aspect-video bg-gray-900 rounded overflow-hidden cursor-pointer border border-transparent hover:border-lexi-gold transition-all"
+                        onclick="App.loadFromGallery('${item.url}')">
+                        <img src="${item.url}" class="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" loading="lazy">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                            <p class="text-[10px] text-white truncate font-mono">${item.style}</p>
+                            <p class="text-[9px] text-gray-400 truncate">${item.date}</p>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            toggleGallery() {
+                const modal = this.elements.galleryModal;
+                if (modal.classList.contains('hidden')) {
+                    modal.classList.remove('hidden');
+                    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+                } else {
+                    modal.classList.add('opacity-0');
+                    setTimeout(() => modal.classList.add('hidden'), 300);
+                }
+            },
+
+            loadFromGallery(url) {
+                this.elements.resultImg.src = url;
+                this.elements.resultImg.classList.remove('hidden');
+                this.elements.emptyState.classList.add('hidden');
+                this.toggleGallery(); 
+                this.elements.statusText.innerHTML = '<span class="text-lexi-gold">LOADED FROM ARCHIVE</span>';
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => App.init());
+
+    </script>
+</body>
+</html>
+
+
