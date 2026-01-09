@@ -181,7 +181,7 @@
   <nav style="display:flex; justify-content:space-between; align-items:center; padding:16px;">
   <strong style="font-size:18px;">Your Project</strong>
 
-  <a href="/about.html"
+  <a href="about.html"
      style="color:#ec4899; text-decoration:none; font-weight:600;">
      About
   </a>
@@ -373,7 +373,7 @@
     <!-- LOGIC -->
     <script>
         // --- CONSTANTS ---
-        const MAX_GENERATIONS = 1;
+        const MAX_GENERATIONS = 15;
         const COUNT_KEY = 'lexiCanvas_daily_count';
         const RESET_KEY = 'lexiCanvas_last_reset';
         const MILLIS_IN_DAY = 24 * 60 * 60 * 1000;
@@ -751,6 +751,19 @@
       <a href="about.html" rel="author" style="display:none;">
   Ethan Anyam
 </a>
+      <footer style="margin-top:40px; padding:20px; text-align:center; font-size:14px; color:#aaa;">
+  <p>
+    © <span id="year"></span> Ethan Anyam ·
+    <a href="about.html" style="color:#a855f7; text-decoration:none;">
+      About the Creator
+    </a>
+  </p>
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
 
 
     </script>
