@@ -75,7 +75,7 @@
     "creator": {
       "@type": "Person",
       "name": "Ethan Anyam",
-      "url": "https://lexi-canva.vercel.app/about"
+      "url": "https://lexi-canva.vercel.app/about.html"
     }
   }
   </script>
@@ -179,6 +179,15 @@
     </style>
 </head>
 <body class="antialiased">
+  
+  <!-- HEADER / NAV -->
+  <header style="display:flex; justify-content:space-between; padding:16px; align-items:center;">
+    <strong style="font-size:18px;">LexiCanvas</strong>
+    <a href="about.html" style="color:#ec4899; text-decoration:none; font-weight:600;">
+      About
+    </a>
+  
+
 
     <!-- Loading / Intro Overlay -->
     <div id="intro-overlay" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center transition-opacity duration-1000">
@@ -214,6 +223,10 @@
                 </button>
             </div>
         </div>
+      <a href="about.html" rel="author" style="display:none;">
+  Ethan Anyam
+</a>
+
     </nav>
 
     <!-- Flash Message Area (Welcome/Show & Tell) -->
@@ -742,6 +755,21 @@
         window.addEventListener('DOMContentLoaded', () => App.init());
 
     </script>
+     <!-- FOOTER -->
+  <footer style="margin-top:40px; padding:20px; text-align:center; font-size:14px; color:#aaa;">
+    <p>
+      © <span id="year"></span> Ethan Anyam ·
+      <a href="about.html" style="color:#a855f7; text-decoration:none;">
+        About the Creator
+      </a>
+    </p>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+
+  
 </body>
 </html>
 
